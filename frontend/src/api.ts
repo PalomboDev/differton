@@ -107,6 +107,10 @@ export async function pull(repoPath: string, remoteName = '', branchName = ''): 
   await App.Pull(repoPath, remoteName, branchName);
 }
 
+export async function pullWithStrategy(repoPath: string, strategy: 'merge' | 'rebase' | 'ff-only'): Promise<void> {
+  await App.PullWithStrategy(repoPath, strategy);
+}
+
 export async function push(repoPath: string): Promise<void> {
   await App.Push(repoPath);
 }

@@ -520,8 +520,57 @@ func (a *App) Fetch(repoPath string) error {
 	return nil
 }
 
-func (a *App) Pull(repoPath string) error {
-	cmd := exec.Command("git", "-C", repoPath, "pull")
+func (a *App) Push(repoPath string) error {
+	cmd := exec.Command("git", "-C", repoPath, "push")
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := string(out)
+		if strings.Contains(msg, "No configured push destination") ||
+			strings.Contains(msg, "no remote") ||
+			strings.Contains(msg, "does not appear to be a git repository") {
+			return fmt.Errorf("no-remote")
+		}
+		return fmt.Errorf("git push failed: %s", msg)
+	}
+	return nil
+}
+
+func (a *App) Pull(repoPath string, remoteName string, branchName string) error {
+	args := []string{"-C", repoPath, "pull"}
+	if remoteName != "" && branchName != "" {
+		args = append(args, remoteName, branchName)
+	}
+	cmd := exec.Command("git", args...)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := string(out)
+		if strings.Contains(msg, "no remote") ||
+			strings.Contains(msg, "does not appear to be a git repository") ||
+			strings.Contains(msg, "No remote configured") {
+			return fmt.Errorf("no-remote")
+		}
+		if strings.Contains(msg, "divergent branches") || strings.Contains(msg, "Need to specify how to reconcile") {
+			return fmt.Errorf("divergent-branches")
+		}
+		return fmt.Errorf("git pull failed: %s", msg)
+	}
+	return nil
+}
+
+// PullWithStrategy pulls using a specific reconcile strategy: "merge", "rebase", or "ff-only"
+func (a *App) PullWithStrategy(repoPath string, strategy string) error {
+	var flag string
+	switch strategy {
+	case "rebase":
+		flag = "--rebase"
+	case "ff-only":
+		flag = "--ff-only"
+	default:
+		flag = "--no-rebase"
+	}
+	cmd := exec.Command("git", "-C", repoPath, "pull", flag)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -530,8 +579,47 @@ func (a *App) Pull(repoPath string) error {
 	return nil
 }
 
-func (a *App) Push(repoPath string) error {
-	cmd := exec.Command("git", "-C", repoPath, "push")
+func (a *App) GetRemotes(repoPath string) []string {
+	cmd := exec.Command("git", "-C", repoPath, "remote")
+	out, err := cmd.Output()
+	if err != nil {
+		return []string{}
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	result := []string{}
+	for _, l := range lines {
+		if l != "" {
+			result = append(result, l)
+		}
+	}
+	return result
+}
+
+func (a *App) SetRemote(repoPath string, remoteName string, remoteURL string) error {
+	// Check if remote already exists
+	remotes := a.GetRemotes(repoPath)
+	exists := false
+	for _, r := range remotes {
+		if r == remoteName {
+			exists = true
+			break
+		}
+	}
+	var cmd *exec.Cmd
+	if exists {
+		cmd = exec.Command("git", "-C", repoPath, "remote", "set-url", remoteName, remoteURL)
+	} else {
+		cmd = exec.Command("git", "-C", repoPath, "remote", "add", remoteName, remoteURL)
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to set remote: %s", string(out))
+	}
+	return nil
+}
+
+func (a *App) PushToRemote(repoPath string, remoteName string, branchName string) error {
+	cmd := exec.Command("git", "-C", repoPath, "push", "-u", remoteName, branchName)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -599,13 +687,26 @@ func (a *App) GetRepoInfo(repoPath string) (map[string]string, error) {
 		info["branch"] = branch
 	}
 
-	// Get ahead/behind
+	// Get ahead/behind — try upstream first, fall back to origin/<branch>
 	cmd := exec.Command("git", "-C", repoPath, "rev-list", "--left-right", "--count", "HEAD...@{u}")
-	out, _ := cmd.Output()
-	parts := strings.Fields(strings.TrimSpace(string(out)))
-	if len(parts) == 2 {
-		info["ahead"] = parts[0]
-		info["behind"] = parts[1]
+	out, err2 := cmd.Output()
+	if err2 == nil {
+		parts := strings.Fields(strings.TrimSpace(string(out)))
+		if len(parts) == 2 {
+			info["ahead"] = parts[0]
+			info["behind"] = parts[1]
+		}
+	} else if err == nil {
+		// No upstream set — count commits on HEAD not reachable from origin/<branch>
+		remote := "origin/" + branch
+		cmd2 := exec.Command("git", "-C", repoPath, "rev-list", "--count", remote+"..HEAD")
+		out2, err3 := cmd2.Output()
+		if err3 == nil {
+			n := strings.TrimSpace(string(out2))
+			if n != "" && n != "0" {
+				info["ahead"] = n
+			}
+		}
 	}
 
 	return info, nil
