@@ -11,7 +11,7 @@ export async function loadPreferences(): Promise<Preferences> {
     return result;
   } catch (e) {
     console.error('[loadPreferences] error:', e);
-    return { activeRepoPath: '', diffMode: 'unified', lastView: 'changes' };
+    return { activeRepoPath: '', diffMode: 'unified', lastView: 'changes', sidebarWidth: 220, panelWidth: 260 };
   }
 }
 
