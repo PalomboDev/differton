@@ -36,6 +36,12 @@ type Repository struct {
 	Name string `json:"name"`
 }
 
+type Preferences struct {
+	ActiveRepoPath string `json:"activeRepoPath"`
+	DiffMode       string `json:"diffMode"` // "unified" | "split"
+	LastView       string `json:"lastView"` // "changes" | "history" | "branches"
+}
+
 type FileStatus struct {
 	Path    string `json:"path"`
 	Status  string `json:"status"` // M, A, D, R, ?
@@ -81,6 +87,36 @@ func getAppDataPath() string {
 
 func getReposFilePath() string {
 	return filepath.Join(getAppDataPath(), "repositories.json")
+}
+
+func getPrefsFilePath() string {
+	return filepath.Join(getAppDataPath(), "preferences.json")
+}
+
+func (a *App) LoadPreferences() Preferences {
+	data, err := os.ReadFile(getPrefsFilePath())
+	if err != nil {
+		return Preferences{DiffMode: "unified", LastView: "changes"}
+	}
+	var prefs Preferences
+	if err := json.Unmarshal(data, &prefs); err != nil {
+		return Preferences{DiffMode: "unified", LastView: "changes"}
+	}
+	if prefs.DiffMode == "" {
+		prefs.DiffMode = "unified"
+	}
+	if prefs.LastView == "" {
+		prefs.LastView = "changes"
+	}
+	return prefs
+}
+
+func (a *App) SavePreferences(prefs Preferences) error {
+	data, err := json.MarshalIndent(prefs, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(getPrefsFilePath(), data, 0644)
 }
 
 // --- Repository management ---
@@ -296,16 +332,11 @@ func (a *App) GetDiff(repoPath, filePath string, staged bool) DiffResult {
 }
 
 func (a *App) GetCommitDiff(repoPath, hash, filePath string) DiffResult {
-	cmd := exec.Command("git", "-C", repoPath, "show", hash+"^.."+hash, "--", filePath)
+	// git show <hash> -- <file> diffs the commit against its parent by default
+	cmd := exec.Command("git", "-C", repoPath, "show", hash, "--", filePath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		// Try without parent (first commit)
-		cmd2 := exec.Command("git", "-C", repoPath, "show", hash, "--", filePath)
-		out2, err2 := cmd2.CombinedOutput()
-		if err2 != nil {
-			return DiffResult{Error: string(out)}
-		}
-		return DiffResult{Content: string(out2)}
+		return DiffResult{Error: string(out)}
 	}
 	return DiffResult{Content: string(out)}
 }
@@ -363,24 +394,29 @@ func (a *App) GetLog(repoPath string, limit int) ([]CommitInfo, error) {
 }
 
 func (a *App) GetCommitFiles(repoPath, hash string) ([]FileStatus, error) {
-	cmd := exec.Command("git", "-C", repoPath, "diff-tree", "--no-commit-id", "-r", "--name-status", hash)
+	// Use git show --name-status which works for all commits including the first
+	cmd := exec.Command("git", "-C", repoPath, "show", "--name-status", "--format=", hash)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git diff-tree failed: %v", err)
+		return nil, fmt.Errorf("git show --name-status failed: %v", err)
 	}
 
 	var files []FileStatus
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
 		parts := strings.Fields(line)
 		if len(parts) < 2 {
 			continue
 		}
-		status := string(parts[0][0])
+		statusCode := parts[0]
+		status := string(statusCode[0]) // first char: M, A, D, R, C, etc.
 		path := parts[1]
 		oldPath := ""
-		if status == "R" && len(parts) >= 3 {
+		if (status == "R" || status == "C") && len(parts) >= 3 {
 			oldPath = parts[1]
 			path = parts[2]
 		}
