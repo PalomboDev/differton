@@ -15,6 +15,7 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [panelWidth, setPanelWidth] = useState(260);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
   const prefsRef = useRef<Preferences>({ activeRepoPath: '', diffMode: 'unified', lastView: 'changes', sidebarWidth: 220, panelWidth: 260 });
 
   useEffect(() => {
@@ -150,13 +151,16 @@ export default function App() {
         onPanelWidthChange={handlePanelWidthChange}
         onBranchChange={() => {}}
         onOpenPalette={() => setPaletteOpen(true)}
+        refreshToken={refreshToken}
       />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         repo={activeRepo}
+        repos={repos}
         onViewChange={handleViewChange}
-        onFetchDone={() => {}}
+        onSelectRepo={handleSelectRepo}
+        onFetchDone={() => setRefreshToken(t => t + 1)}
       />
     </div>
   );
