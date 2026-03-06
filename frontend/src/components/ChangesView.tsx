@@ -30,6 +30,13 @@ export default function ChangesView({ repo, diffMode, onDiffModeChange, onCommit
     try {
       const status = await getStatus(repo.path);
       setFiles(status || []);
+      // Clear selection if the selected file no longer exists in the new status
+      setSelectedFile((prev) => {
+        if (!prev) return null;
+        const still = (status || []).find((f) => f.path === prev.path && f.staged === prev.staged);
+        if (!still) { setDiff(null); return null; }
+        return prev;
+      });
     } catch {
       setFiles([]);
     }
@@ -157,6 +164,8 @@ export default function ChangesView({ repo, diffMode, onDiffModeChange, onCommit
     try {
       await commit(repo.path, commitMsg);
       setCommitMsg('');
+      setSelectedFile(null);
+      setDiff(null);
       await refresh();
       onCommit?.();
     } catch (e: any) {
@@ -179,41 +188,9 @@ export default function ChangesView({ repo, diffMode, onDiffModeChange, onCommit
         overflow: 'hidden',
         position: 'relative',
       }}>
-        {/* Header */}
-        <div style={{
-          padding: '8px 10px 6px',
-          borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexShrink: 0,
-        }}>
-          <input
-            type="checkbox"
-            checked={allStaged}
-            ref={headerCheckboxRef}
-            onChange={handleHeaderCheckbox}
-            title={allStaged ? 'Unstage all' : 'Stage all'}
-          />
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-            {files.length} changed
-          </span>
-          <button
-            onClick={refresh}
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3 }}
-            title="Refresh"
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M10.5 6A4.5 4.5 0 1 1 6 1.5c1.38 0 2.6.62 3.44 1.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              <path d="M9.5 1.5V4H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
-
         {/* Search */}
         <div style={{ padding: '5px 8px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, position: 'relative' }}>
+
           <input
             type="text"
             value={search}
@@ -260,6 +237,40 @@ export default function ChangesView({ repo, diffMode, onDiffModeChange, onCommit
               </svg>
             </button>
           )}
+        </div>
+
+        {/* Header: select-all + count + refresh */}
+        <div style={{
+          padding: '6px 10px',
+          borderBottom: '1px solid var(--border-subtle)',
+          borderLeft: '2px solid transparent',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          flexShrink: 0,
+        }}>
+          <input
+            type="checkbox"
+            checked={allStaged}
+            ref={headerCheckboxRef}
+            onChange={handleHeaderCheckbox}
+            title={allStaged ? 'Unstage all' : 'Stage all'}
+          />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+            {files.length} changed
+          </span>
+          <button
+            onClick={refresh}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex', borderRadius: 3 }}
+            title="Refresh"
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M10.5 6A4.5 4.5 0 1 1 6 1.5c1.38 0 2.6.62 3.44 1.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <path d="M9.5 1.5V4H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
 
         {/* File list */}
