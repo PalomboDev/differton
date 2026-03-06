@@ -2,7 +2,26 @@
  * Wails API wrapper with nice TypeScript types.
  */
 import * as App from '../wailsjs/go/main/App';
-import type { Repository, FileStatus, CommitInfo, Branch, DiffResult } from './types';
+import type { Repository, FileStatus, CommitInfo, Branch, DiffResult, Preferences } from './types';
+
+export async function loadPreferences(): Promise<Preferences> {
+  try {
+    const result = (await App.LoadPreferences()) as Preferences;
+    console.log('[loadPreferences] result:', JSON.stringify(result));
+    return result;
+  } catch (e) {
+    console.error('[loadPreferences] error:', e);
+    return { activeRepoPath: '', diffMode: 'unified', lastView: 'changes' };
+  }
+}
+
+export async function savePreferences(prefs: Preferences): Promise<void> {
+  try {
+    await App.SavePreferences(prefs);
+  } catch {
+    // best-effort
+  }
+}
 
 export async function loadRepositories(): Promise<Repository[]> {
   try {
@@ -84,12 +103,28 @@ export async function fetch(repoPath: string): Promise<void> {
   await App.Fetch(repoPath);
 }
 
-export async function pull(repoPath: string): Promise<void> {
-  await App.Pull(repoPath);
+export async function pull(repoPath: string, remoteName = '', branchName = ''): Promise<void> {
+  await App.Pull(repoPath, remoteName, branchName);
 }
 
 export async function push(repoPath: string): Promise<void> {
   await App.Push(repoPath);
+}
+
+export async function pushToRemote(repoPath: string, remoteName: string, branchName: string): Promise<void> {
+  await App.PushToRemote(repoPath, remoteName, branchName);
+}
+
+export async function getRemotes(repoPath: string): Promise<string[]> {
+  try {
+    return (await App.GetRemotes(repoPath)) as string[];
+  } catch {
+    return [];
+  }
+}
+
+export async function setRemote(repoPath: string, remoteName: string, remoteURL: string): Promise<void> {
+  await App.SetRemote(repoPath, remoteName, remoteURL);
 }
 
 export async function openInExplorer(repoPath: string): Promise<void> {
