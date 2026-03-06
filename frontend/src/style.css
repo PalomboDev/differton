@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --bg-base: #0d0d0f;
+  --bg-surface: #141416;
+  --bg-elevated: #1a1a1e;
+  --bg-overlay: #202024;
+  --bg-hover: #26262c;
+  --border: #2a2a30;
+  --border-subtle: #1e1e24;
+  --text-primary: #e8e8ec;
+  --text-secondary: #8888a0;
+  --text-muted: #55556a;
+  --accent: #7c6af7;
+  --accent-glow: rgba(124, 106, 247, 0.15);
+  --add-color: #3dcc6a;
+  --add-bg: rgba(61, 204, 106, 0.08);
+  --del-color: #e05a5a;
+  --del-bg: rgba(224, 90, 90, 0.08);
+  --mod-color: #e8a838;
+  --rename-color: #a78bfa;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-hover);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-glow);
+  color: var(--text-primary);
+}
+
+/* App drag region for macOS */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Diff line styles */
+.diff-add {
+  background: var(--add-bg);
+  color: var(--add-color);
+}
+.diff-del {
+  background: var(--del-bg);
+  color: var(--del-color);
+}
+.diff-meta {
+  color: var(--accent);
+  opacity: 0.7;
+}
+.diff-header {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+.animate-slide-in {
+  animation: slideIn 0.15s ease-out forwards;
+}
+
+/* Checkbox custom */
+input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color 0.1s, background 0.1s;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 6px;
+  height: 9px;
+  border: 1.5px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) scaleY(0.85);
+}
+input[type="checkbox"]:indeterminate {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+input[type="checkbox"]:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  width: 8px;
+  height: 1.5px;
+  background: var(--accent);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
