@@ -38,8 +38,10 @@ type Repository struct {
 
 type Preferences struct {
 	ActiveRepoPath string `json:"activeRepoPath"`
-	DiffMode       string `json:"diffMode"` // "unified" | "split"
-	LastView       string `json:"lastView"` // "changes" | "history" | "branches"
+	DiffMode       string `json:"diffMode"`     // "unified" | "split"
+	LastView       string `json:"lastView"`     // "changes" | "history" | "branches"
+	SidebarWidth   int    `json:"sidebarWidth"` // repo sidebar px
+	PanelWidth     int    `json:"panelWidth"`   // left file-list panel px
 }
 
 type FileStatus struct {

@@ -24,11 +24,15 @@ export function GetDiff(arg1:string,arg2:string,arg3:boolean):Promise<main.DiffR
 
 export function GetLog(arg1:string,arg2:number):Promise<Array<main.CommitInfo>>;
 
+export function GetRemotes(arg1:string):Promise<Array<string>>;
+
 export function GetRepoInfo(arg1:string):Promise<Record<string, string>>;
 
 export function GetStatus(arg1:string):Promise<Array<main.FileStatus>>;
 
 export function GetUntrackedDiff(arg1:string,arg2:string):Promise<main.DiffResult>;
+
+export function LoadPreferences():Promise<main.Preferences>;
 
 export function LoadRepositories():Promise<Array<main.Repository>>;
 
@@ -38,13 +42,21 @@ export function OpenInExplorer(arg1:string):Promise<void>;
 
 export function OpenInTerminal(arg1:string):Promise<void>;
 
-export function Pull(arg1:string):Promise<void>;
+export function Pull(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function PullWithStrategy(arg1:string,arg2:string):Promise<void>;
 
 export function Push(arg1:string):Promise<void>;
 
+export function PushToRemote(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function RemoveRepository(arg1:string):Promise<void>;
 
+export function SavePreferences(arg1:main.Preferences):Promise<void>;
+
 export function SaveRepositories(arg1:Array<main.Repository>):Promise<void>;
+
+export function SetRemote(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function StageAll(arg1:string):Promise<void>;
 

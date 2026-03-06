@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Repository, FileStatus, DiffResult } from '../types';
 import { getStatus, stageFile, unstageFile, stageAll, unstageAll, commit, getDiff, getUntrackedDiff } from '../api';
 import DiffViewer from './DiffViewer';
 import StatusBadge from './StatusBadge';
+import { useResizePanel } from '../hooks/useResizePanel';
 
 interface Props {
   repo: Repository;
+  diffMode: 'unified' | 'split';
+  onDiffModeChange: (m: 'unified' | 'split') => void;
+  onCommit?: () => void;
+  panelWidth?: number;
+  onPanelWidthChange?: (w: number) => void;
 }
 
-export default function ChangesView({ repo }: Props) {
+export default function ChangesView({ repo, diffMode, onDiffModeChange, onCommit, panelWidth = 260, onPanelWidthChange }: Props) {
   const [files, setFiles] = useState<FileStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileStatus | null>(null);
@@ -17,6 +23,7 @@ export default function ChangesView({ repo }: Props) {
   const [commitMsg, setCommitMsg] = useState('');
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState('');
+  const [search, setSearch] = useState('');
 
   // Silent refresh — never sets loading, so the list never blanks out
   const refresh = useCallback(async () => {
@@ -45,7 +52,7 @@ export default function ChangesView({ repo }: Props) {
     setDiff(null);
     try {
       let result: DiffResult;
-      if (file.status === '?') {
+      if (file.status === '?' || (file.status === 'A' && !file.staged)) {
         result = await getUntrackedDiff(repo.path, file.path);
       } else {
         result = await getDiff(repo.path, file.path, file.staged);
@@ -89,13 +96,47 @@ export default function ChangesView({ repo }: Props) {
   const allStaged = files.length > 0 && unstagedFiles.length === 0;
   const someStaged = stagedFiles.length > 0 && unstagedFiles.length > 0;
 
-  const unifiedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path));
+  const unifiedFiles = [...files]
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .filter((f) => !search || f.path.toLowerCase().includes(search.toLowerCase()));
+
+  const listRef = useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const onResizeMouseDown = useResizePanel(panelWidth, onPanelWidthChange ?? (() => {}));
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someStaged;
+    }
+  }, [someStaged]);
+
+  const selectedIndex = selectedFile
+    ? unifiedFiles.findIndex((f) => f.path === selectedFile.path && f.staged === selectedFile.staged)
+    : -1;
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Don't steal keys when typing in textarea
+      if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      if (unifiedFiles.length === 0) return;
+      let next: number;
+      if (e.key === 'ArrowUp') {
+        next = selectedIndex <= 0 ? unifiedFiles.length - 1 : selectedIndex - 1;
+      } else {
+        next = selectedIndex >= unifiedFiles.length - 1 ? 0 : selectedIndex + 1;
+      }
+      loadDiff(unifiedFiles[next]);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [unifiedFiles, selectedIndex, loadDiff]);
 
   const handleHeaderCheckbox = useCallback(async () => {
-    // If all staged → unstage all. If partial or none → unstage all (clear selection).
-    // Only stage all when nothing is staged at all.
-    const shouldStage = !allStaged && !someStaged;
-    // Optimistic update
+    // Stage all if not everything is staged; unstage all if everything is staged
+    const shouldStage = !allStaged;
     setFiles((prev) => prev.map((f) => ({ ...f, staged: shouldStage })));
     try {
       if (shouldStage) {
@@ -105,7 +146,7 @@ export default function ChangesView({ repo }: Props) {
       }
       refresh();
     } catch {
-      refresh(); // revert by re-fetching
+      refresh();
     }
   }, [repo.path, allStaged, refresh]);
 
@@ -117,6 +158,7 @@ export default function ChangesView({ repo }: Props) {
       await commit(repo.path, commitMsg);
       setCommitMsg('');
       await refresh();
+      onCommit?.();
     } catch (e: any) {
       setCommitError(e?.toString() || 'Commit failed');
     }
@@ -127,13 +169,15 @@ export default function ChangesView({ repo }: Props) {
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Left panel: file list + commit */}
       <div style={{
-        width: 280,
-        minWidth: 220,
+        width: panelWidth,
+        minWidth: panelWidth,
+        maxWidth: panelWidth,
         borderRight: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--bg-surface)',
         overflow: 'hidden',
+        position: 'relative',
       }}>
         {/* Header */}
         <div style={{
@@ -147,7 +191,7 @@ export default function ChangesView({ repo }: Props) {
           <input
             type="checkbox"
             checked={allStaged}
-            ref={(el) => { if (el) el.indeterminate = someStaged; }}
+            ref={headerCheckboxRef}
             onChange={handleHeaderCheckbox}
             title={allStaged ? 'Unstage all' : 'Stage all'}
           />
@@ -168,8 +212,58 @@ export default function ChangesView({ repo }: Props) {
           </button>
         </div>
 
+        {/* Search */}
+        <div style={{ padding: '5px 8px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, position: 'relative' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter files..."
+            style={{
+              width: '100%',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              color: 'var(--text-primary)',
+              fontSize: 11,
+              fontFamily: 'var(--font-mono)',
+              padding: '4px 22px 4px 7px',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: 13,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              title="Clear"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
         {/* File list */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div ref={listRef} style={{ flex: 1, overflowY: 'auto' }}>
           {loading ? (
             <div style={{ padding: 12, color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>loading...</div>
           ) : files.length === 0 ? (
@@ -177,15 +271,19 @@ export default function ChangesView({ repo }: Props) {
               No changes
             </div>
           ) : (
-            unifiedFiles.map((f) => (
-              <FileRow
-                key={f.path}
-                file={f}
-                selected={selectedFile?.path === f.path && selectedFile?.staged === f.staged}
-                onSelect={() => loadDiff(f)}
-                onToggle={() => handleStageToggle(f)}
-              />
-            ))
+            unifiedFiles.map((f) => {
+              const isSelected = selectedFile?.path === f.path && selectedFile?.staged === f.staged;
+              return (
+                <FileRow
+                  key={f.path}
+                  file={f}
+                  selected={isSelected}
+                  onSelect={() => loadDiff(f)}
+                  onToggle={() => handleStageToggle(f)}
+                  scrollIntoView={isSelected}
+                />
+              );
+            })
           )}
         </div>
 
@@ -244,12 +342,19 @@ export default function ChangesView({ repo }: Props) {
               transition: 'all 0.15s',
             }}
           >
-            {committing ? 'Committing...' : stagedFiles.length === 0 ? 'No staged files' : `Commit to ${''}`}
+            {committing ? 'Committing...' : 'Commit'}
           </button>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'center' }}>
             ⌘↵ to commit
           </div>
         </div>
+        {/* Resize handle */}
+        <div
+          onMouseDown={onResizeMouseDown}
+          style={{ position: 'absolute', top: 0, right: 0, width: 5, height: '100%', cursor: 'ew-resize', zIndex: 10 }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        />
       </div>
 
       {/* Right panel: diff */}
@@ -278,6 +383,8 @@ export default function ChangesView({ repo }: Props) {
           error={diff?.error || ''}
           loading={diffLoading}
           placeholder="Select a file to preview changes"
+          diffMode={diffMode}
+          onDiffModeChange={onDiffModeChange}
         />
       </div>
     </div>
@@ -285,10 +392,19 @@ export default function ChangesView({ repo }: Props) {
 }
 
 
-function FileRow({ file, selected, onSelect, onToggle }: { file: FileStatus; selected: boolean; onSelect: () => void; onToggle: () => void }) {
+function FileRow({ file, selected, onSelect, onToggle, scrollIntoView }: { file: FileStatus; selected: boolean; onSelect: () => void; onToggle: () => void; scrollIntoView?: boolean }) {
   const [hovered, setHovered] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollIntoView && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [scrollIntoView]);
+
   return (
     <div
+      ref={rowRef}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

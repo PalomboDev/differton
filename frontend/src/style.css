@@ -131,14 +131,16 @@ input[type="checkbox"]:checked {
 input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
-  left: 3px;
-  top: 1px;
-  width: 6px;
-  height: 9px;
+  width: 5px;
+  height: 8px;
   border: 1.5px solid white;
   border-top: none;
   border-left: none;
-  transform: rotate(45deg) scaleY(0.85);
+  transform: rotate(45deg);
+  top: 50%;
+  left: 50%;
+  margin-top: -5px;
+  margin-left: -3px;
 }
 input[type="checkbox"]:indeterminate {
   border-color: var(--accent);
@@ -147,11 +149,14 @@ input[type="checkbox"]:indeterminate {
 input[type="checkbox"]:indeterminate::after {
   content: '';
   position: absolute;
-  left: 2px;
-  top: 5px;
   width: 8px;
   height: 1.5px;
   background: var(--accent);
+  border-radius: 1px;
+  top: 50%;
+  left: 50%;
+  margin-top: -1px;
+  margin-left: -4px;
 }
 
 /* Focus ring */

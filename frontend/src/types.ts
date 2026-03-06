@@ -29,3 +29,11 @@ export interface DiffResult {
 }
 
 export type ViewType = 'changes' | 'history' | 'branches';
+
+export interface Preferences {
+  activeRepoPath: string;
+  diffMode: 'unified' | 'split';
+  lastView: ViewType;
+  sidebarWidth: number;
+  panelWidth: number;
+}

@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { Repository } from '../types';
+
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 480;
+const DEFAULT_WIDTH = 220;
 
 interface Props {
   repos: Repository[];
@@ -7,21 +11,47 @@ interface Props {
   onSelect: (repo: Repository) => void;
   onRemove: (path: string) => void;
   onAdd: () => void;
+  width?: number;
+  onWidthChange?: (w: number) => void;
 }
 
-export default function Sidebar({ repos, activeRepo, onSelect, onRemove, onAdd }: Props) {
+export default function Sidebar({ repos, activeRepo, onSelect, onRemove, onAdd, width = DEFAULT_WIDTH, onWidthChange }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startWidth = useRef(width);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    startX.current = e.clientX;
+    startWidth.current = width;
+    setDragging(true);
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX.current;
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + delta));
+      onWidthChange?.(next);
+    };
+    const onUp = () => {
+      setDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [width, onWidthChange]);
 
   return (
     <div style={{
-      width: 220,
-      minWidth: 220,
+      width,
+      minWidth: width,
+      maxWidth: width,
       background: 'var(--bg-surface)',
-      borderRight: '1px solid var(--border-subtle)',
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
       userSelect: 'none',
+      position: 'relative',
     }}>
       {/* Repos list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -72,7 +102,6 @@ export default function Sidebar({ repos, activeRepo, onSelect, onRemove, onAdd }
                   gap: 8,
                 }}
               >
-                {/* Folder icon */}
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
                   <path d="M1.5 3.5C1.5 2.67 2.17 2 3 2h3.08l1.5 1.5H13a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12V3.5z"
                     fill={isActive ? 'var(--accent)' : 'var(--text-muted)'} />
@@ -89,7 +118,6 @@ export default function Sidebar({ repos, activeRepo, onSelect, onRemove, onAdd }
                 }}>
                   {repo.name}
                 </span>
-                {/* Remove button */}
                 {isHovered && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onRemove(repo.path); }}
@@ -156,6 +184,24 @@ export default function Sidebar({ repos, activeRepo, onSelect, onRemove, onAdd }
           Add repository
         </button>
       </div>
+
+      {/* Resize handle */}
+      <div
+        onMouseDown={onMouseDown}
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 5,
+          height: '100%',
+          cursor: 'ew-resize',
+          background: dragging ? 'var(--accent)' : 'transparent',
+          transition: 'background 0.1s',
+          zIndex: 30,
+        }}
+        onMouseEnter={(e) => { if (!dragging) e.currentTarget.style.background = 'var(--border)'; }}
+        onMouseLeave={(e) => { if (!dragging) e.currentTarget.style.background = 'transparent'; }}
+      />
     </div>
   );
 }

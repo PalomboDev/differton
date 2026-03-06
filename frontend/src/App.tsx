@@ -44,7 +44,7 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || (e.shiftKey && e.key === 'p'))) {
         e.preventDefault();
         setPaletteOpen((v) => !v);
       }
@@ -159,7 +159,7 @@ export default function App() {
         repo={activeRepo}
         repos={repos}
         onViewChange={handleViewChange}
-        onSelectRepo={handleSelectRepo}
+        onOpenSidebar={() => { setPaletteOpen(false); setSidebarOpen(true); }}
         onFetchDone={() => setRefreshToken(t => t + 1)}
       />
     </div>

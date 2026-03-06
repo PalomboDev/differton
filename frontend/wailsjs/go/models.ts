@@ -66,6 +66,26 @@ export namespace main {
 	        this.oldPath = source["oldPath"];
 	    }
 	}
+	export class Preferences {
+	    activeRepoPath: string;
+	    diffMode: string;
+	    lastView: string;
+	    sidebarWidth: number;
+	    panelWidth: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Preferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.activeRepoPath = source["activeRepoPath"];
+	        this.diffMode = source["diffMode"];
+	        this.lastView = source["lastView"];
+	        this.sidebarWidth = source["sidebarWidth"];
+	        this.panelWidth = source["panelWidth"];
+	    }
+	}
 	export class Repository {
 	    path: string;
 	    name: string;

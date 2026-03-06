@@ -46,6 +46,10 @@ export function GetLog(arg1, arg2) {
   return window['go']['main']['App']['GetLog'](arg1, arg2);
 }
 
+export function GetRemotes(arg1) {
+  return window['go']['main']['App']['GetRemotes'](arg1);
+}
+
 export function GetRepoInfo(arg1) {
   return window['go']['main']['App']['GetRepoInfo'](arg1);
 }
@@ -56,6 +60,10 @@ export function GetStatus(arg1) {
 
 export function GetUntrackedDiff(arg1, arg2) {
   return window['go']['main']['App']['GetUntrackedDiff'](arg1, arg2);
+}
+
+export function LoadPreferences() {
+  return window['go']['main']['App']['LoadPreferences']();
 }
 
 export function LoadRepositories() {
@@ -74,20 +82,36 @@ export function OpenInTerminal(arg1) {
   return window['go']['main']['App']['OpenInTerminal'](arg1);
 }
 
-export function Pull(arg1) {
-  return window['go']['main']['App']['Pull'](arg1);
+export function Pull(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Pull'](arg1, arg2, arg3);
+}
+
+export function PullWithStrategy(arg1, arg2) {
+  return window['go']['main']['App']['PullWithStrategy'](arg1, arg2);
 }
 
 export function Push(arg1) {
   return window['go']['main']['App']['Push'](arg1);
 }
 
+export function PushToRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PushToRemote'](arg1, arg2, arg3);
+}
+
 export function RemoveRepository(arg1) {
   return window['go']['main']['App']['RemoveRepository'](arg1);
 }
 
+export function SavePreferences(arg1) {
+  return window['go']['main']['App']['SavePreferences'](arg1);
+}
+
 export function SaveRepositories(arg1) {
   return window['go']['main']['App']['SaveRepositories'](arg1);
+}
+
+export function SetRemote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetRemote'](arg1, arg2, arg3);
 }
 
 export function StageAll(arg1) {
