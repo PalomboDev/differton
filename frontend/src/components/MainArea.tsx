@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Repository, ViewType } from '../types';
 import { getCurrentBranch, getRepoInfo, fetch, pull, pullWithStrategy, push, pushToRemote, getRemotes, setRemote, openInExplorer, openInTerminal } from '../api';
 import ChangesView from './ChangesView';
@@ -57,6 +57,19 @@ export default function MainArea({ repo, view, onViewChange, sidebarOpen, onTogg
   const [remoteModal, setRemoteModal] = useState<RemoteModal | null>(null);
   const [divergeModal, setDivergeModal] = useState(false);
   const loadingToastId = useRef<number | null>(null);
+  const prevBranchRef = useRef('');
+
+  const silentFetch = useCallback((repoPath: string) => {
+    fetch(repoPath).then(() => {
+      getRepoInfo(repoPath).then((info) => {
+        const a = info.ahead ?? '';
+        const b = info.behind ?? '';
+        setAhead(a); setBehind(b);
+        setPushCount(a && a !== '0' ? a : '');
+        setPullCount(b && b !== '0' ? b : '');
+      }).catch(() => {});
+    }).catch(() => {}); // silent — never show errors
+  }, []);
 
   useEffect(() => {
     if (!repo) return;
@@ -65,7 +78,7 @@ export default function MainArea({ repo, view, onViewChange, sidebarOpen, onTogg
     setBehind('');
     setPullCount('');
     setPushCount('');
-    getCurrentBranch(repo.path).then((b) => { setBranch(b); onBranchChange?.(b); }).catch(() => {});
+    getCurrentBranch(repo.path).then((b) => { setBranch(b); prevBranchRef.current = b; onBranchChange?.(b); }).catch(() => {});
     getRepoInfo(repo.path).then((info) => {
       const a = info.ahead ?? '';
       const b = info.behind ?? '';
@@ -74,7 +87,32 @@ export default function MainArea({ repo, view, onViewChange, sidebarOpen, onTogg
       setPushCount(a && a !== '0' ? a : '');
       setPullCount(b && b !== '0' ? b : '');
     }).catch(() => {});
-  }, [repo]);
+    // Auto-fetch on repo load
+    silentFetch(repo.path);
+  }, [repo, silentFetch]);  // eslint-disable-line
+
+  // Auto-fetch every 3 minutes
+  useEffect(() => {
+    if (!repo) return;
+    const interval = setInterval(() => silentFetch(repo.path), 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [repo, silentFetch]);
+
+  // Poll for branch changes every 5s — re-fetch if branch switched externally
+  useEffect(() => {
+    if (!repo) return;
+    const interval = setInterval(() => {
+      getCurrentBranch(repo.path).then((b) => {
+        if (b && b !== prevBranchRef.current) {
+          prevBranchRef.current = b;
+          setBranch(b);
+          onBranchChange?.(b);
+          silentFetch(repo.path);
+        }
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [repo, silentFetch, onBranchChange]);
 
   // Global keyboard shortcuts ⌘1/2/3
   useEffect(() => {
