@@ -1,22 +1,58 @@
-# README
+# Differton
 
-## About
+A beautiful, native Git client built with [Wails](https://wails.io) (Go + React).
 
-This is the official Wails React-TS template.
+## Features
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+- **Repository management** — add/remove local Git repos, persist across sessions
+- **Working changes** — view staged/unstaged files, stage/unstage individually or all at once, commit
+- **Diff viewer** — unified and split diff modes for working changes, staged changes, and untracked files
+- **History** — browse commit log, inspect per-commit file changes and diffs
+- **Branches** — list local and remote branches, checkout, create new branches
+- **Remote operations** — fetch, pull (merge/rebase/ff-only), push, set remotes
+- **Quick actions** — open repo in Finder/Explorer or Terminal
 
-## Live Development
+## Tech stack
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+| Layer    | Technology                        |
+|----------|-----------------------------------|
+| Shell    | Go 1.23 + Wails v2                |
+| Frontend | React 18, TypeScript, Tailwind CSS |
+| Bundler  | Vite                              |
+| Icons    | Lucide React                      |
 
-## Building
+## Requirements
 
-To build a redistributable, production mode package, use `wails build`.
+- [Go 1.21+](https://go.dev/dl/)
+- [Node.js 18+](https://nodejs.org/)
+- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation)
 
-Test
-ABC
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+```
+
+## Development
+
+```bash
+wails dev
+```
+
+Starts the app with hot-reload. A browser dev server is also available at `http://localhost:34115`.
+
+## Build
+
+```bash
+wails build
+```
+
+Produces a native binary in `build/bin/`.
+
+## Data storage
+
+User data (repositories list, preferences) is stored in:
+
+| OS      | Path                                            |
+|---------|-------------------------------------------------|
+| macOS   | `~/Library/Application Support/Differton/`     |
+| Windows | `%APPDATA%\Differton\`                          |
+| Linux   | `~/.config/differton/`                          |
