@@ -2,6 +2,12 @@
 
 A beautiful, native Git client built with [Wails](https://wails.io) (Go + React).
 
+## Screenshots
+<img width="1511" height="947" alt="image" src="https://github.com/user-attachments/assets/6fba8ca8-876a-4499-93cc-dd701f955682" />
+<img width="1511" height="948" alt="image" src="https://github.com/user-attachments/assets/08f17d5f-09a5-4e87-958c-bbb069aceb6e" />
+<img width="1510" height="948" alt="image" src="https://github.com/user-attachments/assets/ed005a0e-b37e-44b0-bd02-50e9d595b1e9" />
+
+
 ## Features
 
 - **Repository management** — add/remove local Git repos, persist across sessions
